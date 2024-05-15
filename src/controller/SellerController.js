@@ -48,10 +48,10 @@ const registerSeller = async (req, res) => {
     const hash = await postToIPFS(json, "data.json", name);
     res.status(200).json({ ipfsHash: hash });
   } catch (error) {
-    console.log(error.response.data);
+    console.log(error);
     res.status(500).json({
       errorMsg: "Error while registering as a seller",
-      error: error.response.data,
+      error: error,
     });
   }
 };
@@ -85,10 +85,10 @@ const login = async (req, res) => {
       }
     }
   } catch (error) {
-    console.log(error.response.data);
+    console.log(error);
     res.status(500).json({
       errorMsg: "Error logging as a seller",
-      error: error.response.data,
+      error: error,
     });
   }
 };
@@ -104,16 +104,18 @@ const getSellerByID = async (req, res) => {
       username: currSeller.username,
       email: currSeller.email,
       ethAddress: currSeller.ethAddress,
+      fullName: currSeller.fullName,
+      stake: currSeller.stake,
       identityPhotosHash: currSeller.identityPhotosHash,
       password: currSeller.password,
       role: "seller",
     };
     res.status(200).json({ currSeller: finalResponse });
   } catch (error) {
-    console.log(error.response.data);
+    console.log(error);
     res.status(500).json({
       errorMsg: "Error getting seller info",
-      error: error.response.data,
+      error: error,
     });
   }
 };
@@ -127,10 +129,8 @@ const getAllSellers = async (req, res) => {
       res.status(200).json(usersArray); //2d array to access it-> usersArray[0][1].name for ex, gets first element
     }
   } catch (error) {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
 
@@ -143,10 +143,8 @@ const getAllIdentites = async (req, res) => {
       res.status(200).json({ identities: data });
     }
   } catch (error) {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
 const uploadIdentityPhotos = async (req, res) => {
@@ -156,10 +154,8 @@ const uploadIdentityPhotos = async (req, res) => {
     const hash = await uploadPhotosToIPFS(photo, username, "identity");
     res.status(200).json({ ipfsHash: hash });
   } catch (error) {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
 
@@ -174,10 +170,8 @@ const checkIdentityVerification = async (req, res) => {
     }
     res.status(200).json({ verified: true });
   } catch (error) {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
 

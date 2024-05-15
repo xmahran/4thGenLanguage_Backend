@@ -7,6 +7,7 @@ const buyerRouter = require("./routes/buyerRoutes.js");
 const itemRouter = require("./routes/itemRoutes.js");
 const oracleRouter = require("./routes/oracleRoutes.js");
 const contractRouter = require("./routes/contractRoutes.js");
+const ethRouter = require("./routes/ethRoutes.js");
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use("/api/buyer", buyerRouter);
 app.use("/api/item", itemRouter);
 app.use("/api/oracle", oracleRouter);
 app.use("/api/contract", contractRouter);
+app.use("/api/eth", ethRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

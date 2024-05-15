@@ -18,15 +18,22 @@ const postItem = async (req, res) => {
   let itemID;
   let prevHash;
   let node;
-  const { sellerID, itemName, itemDescription, itemPrice, itemImgHash } =
-    req.body;
+  const {
+    sellerID,
+    itemName,
+    itemDescription,
+    itemPrice,
+    itemLocation,
+    itemImgHash,
+  } = req.body;
   const itemState = new Map();
-  const photo = req.file.buffer;
+  const photos = req.files.map((file) => file.buffer);
   let content = [
     {
       sellerID: sellerID,
       itemName: itemName,
       itemDescription: itemDescription,
+      itemLocation: itemLocation,
       itemPrice: itemPrice,
       itemImgHash: itemImgHash,
     },
@@ -39,13 +46,17 @@ const postItem = async (req, res) => {
 
     let itemSellerName = itemSellerNode.get(parseInt(sellerID)).content[0]
       .username;
-    let itemImgHash = await uploadPhotosToIPFS(
-      photo,
-      itemSellerName,
-      "product"
-    );
+    let itemPhotos = [];
+    for (const photo of photos) {
+      let itemImgHash = await uploadPhotosToIPFS(
+        photo,
+        itemSellerName,
+        "product"
+      );
+      itemPhotos.push(itemImgHash);
+    }
 
-    content[0].itemImgHash = itemImgHash;
+    content[0].itemImgHash = itemPhotos;
 
     itemID = numOfItems + 1;
     name = `item${itemID}`;
@@ -73,10 +84,10 @@ const postItem = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error.response.data);
+    console.error(error);
     return res.status(500).json({
       errorMsg: "Error while adding an item",
-      error: error.response.data,
+      error: error,
     });
   }
 };
@@ -97,10 +108,33 @@ const getSellerItems = async (req, res) => {
       res.status(200).json({ currSellerItems });
     }
   } catch (error) {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
+  }
+};
+const getItemByID = async (req, res) => {
+  const { itemID } = req.params;
+  try {
+    const itemHash = await getHash(`item${itemID}`);
+    const item = await getFileByHash(itemHash);
+    let currItem = item.get(parseInt(itemID)).content[0];
+
+    let finalResponse = {
+      id: itemID,
+      sellerID: currItem.sellerID,
+      itemName: currItem.itemName,
+      itemDescription: currItem.itemDescription,
+      itemPrice: currItem.itemPrice,
+      itemImgHash: currItem.itemImgHash,
+      itemLocation: currItem.itemLocation,
+    };
+    res.status(200).json({ currItem: finalResponse });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      errorMsg: "Error getting item info",
+      error: error,
+    });
   }
 };
 const getAllItems = async (req, res) => {
@@ -115,10 +149,8 @@ const getAllItems = async (req, res) => {
       res.status(200).json({ items: itemsArray });
     }
   } catch {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
 const getAllItemsOracle = async (req, res) => {
@@ -139,10 +171,8 @@ const getAllItemsOracle = async (req, res) => {
       res.status(200).json({ items: finalItemsArray });
     }
   } catch {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
 
@@ -157,10 +187,8 @@ const checkItemVerification = async (req, res) => {
     }
     res.status(200).json({ verified: true });
   } catch (error) {
-    console.log(error.response.data);
-    res
-      .status(500)
-      .json({ errorMsg: "Error fetching data", error: error.response.data });
+    console.log(error);
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
 
@@ -171,4 +199,5 @@ module.exports = {
   getAllItems,
   checkItemVerification,
   getAllItemsOracle,
+  getItemByID,
 };

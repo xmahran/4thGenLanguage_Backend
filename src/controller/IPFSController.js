@@ -28,6 +28,29 @@ const postToIPFS = async (body, filetype, filename) => {
     return data.IpfsHash;
   } catch (error) {}
 };
+const postToIPFSWithMetadata = async (body, filetype, metadata) => {
+  try {
+    const formData = new FormData();
+    formData.append("file", body, { filename: filetype });
+    const pinataMetadata = JSON.stringify(metadata);
+    formData.append("pinataMetadata", pinataMetadata);
+    const pinataOptions = JSON.stringify({
+      cidVersion: 1,
+    });
+    formData.append("pinataOptions", pinataOptions);
+    const response = await axios.post(
+      `https://api.pinata.cloud/pinning/pinFileToIPFS`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${JWT}`,
+        },
+      }
+    );
+    const data = await response.data;
+    return data.IpfsHash;
+  } catch (error) {}
+};
 const uploadPhotosToIPFS = async (photo, name, type) => {
   try {
     const formData = new FormData();
@@ -54,6 +77,20 @@ const uploadPhotosToIPFS = async (photo, name, type) => {
     );
     const data = await response.data;
     return data.IpfsHash;
+  } catch (error) {}
+};
+const deleteFileFromIPFS = async (filename) => {
+  try {
+    let hash = await getHash(filename);
+    const response = await axios.delete(
+      `https://api.pinata.cloud/pinning/unpin/${hash}`,
+      {
+        headers: {
+          Authorization: `Bearer ${JWT}`,
+        },
+      }
+    );
+    return "Done";
   } catch (error) {}
 };
 
@@ -195,6 +232,7 @@ const checkFileVerification = async (type) => {
 
 module.exports = {
   postToIPFS,
+  postToIPFSWithMetadata,
   getHash,
   checkFilesLength,
   getAllFilesFromIPFS,
@@ -203,4 +241,5 @@ module.exports = {
   checkFileVerification,
   getHashArray,
   getFileByHash,
+  deleteFileFromIPFS,
 };
