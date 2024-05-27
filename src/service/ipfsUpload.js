@@ -12,6 +12,8 @@ const { contractABI, contractAddress, bytecode, JWT } = require("../constants");
 const web3 = new Web3(provider);
 const axios = require("axios");
 
+//FOR TESTING
+
 const uploadImageToIpfs = async (req, res) => {
   try {
     const imageFile = req.file.buffer;

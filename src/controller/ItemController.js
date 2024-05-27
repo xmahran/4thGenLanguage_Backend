@@ -1,5 +1,6 @@
 const multer = require("multer");
 const upload = multer();
+const axios = require("axios");
 const { serializeDatabase } = require("./DatabaseController");
 const {
   uploadPhotosToIPFS,
@@ -10,8 +11,14 @@ const {
   getAllFilesFromIPFS,
   getAllPhotosFromIPFS,
   checkFileVerification,
+  checkMetadata,
 } = require("./IPFSController");
 const { Node, addNode } = require("../model/Node");
+const {
+  getContractByTypeID,
+  getContractIDBySellerID,
+  getContractValuesByID,
+} = require("./ContractController");
 
 const postItem = async (req, res) => {
   let name;
@@ -36,6 +43,8 @@ const postItem = async (req, res) => {
       itemLocation: itemLocation,
       itemPrice: itemPrice,
       itemImgHash: itemImgHash,
+      hasContract: false,
+      hasBuyer: false,
     },
   ];
 
@@ -81,6 +90,7 @@ const postItem = async (req, res) => {
         itemDescription: content[0].itemDescription,
         itemPrice: content[0].itemPrice,
         itemImgHash: content[0].itemImgHash,
+        hasContract: content[0].hasContract,
       },
     });
   } catch (error) {
@@ -97,14 +107,16 @@ const getSellerItems = async (req, res) => {
   try {
     let currSellerItems = [];
     const data = await getAllFilesFromIPFS(`item`);
-    if (data === 0) {
+    if (data.size === 0) {
       res.status(200).json({ currSellerItems: [] });
     } else {
-      data.forEach((value) => {
+      for (const [key, value] of data.entries()) {
         if (value.content[0].sellerID === sellerID) {
+          value.content[0].hasContract =
+            (await getContractByTypeID("item", key)) !== null ? true : false;
           currSellerItems.push(value);
         }
-      });
+      }
       res.status(200).json({ currSellerItems });
     }
   } catch (error) {
@@ -112,12 +124,16 @@ const getSellerItems = async (req, res) => {
     res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
+
 const getItemByID = async (req, res) => {
   const { itemID } = req.params;
   try {
     const itemHash = await getHash(`item${itemID}`);
     const item = await getFileByHash(itemHash);
     let currItem = item.get(parseInt(itemID)).content[0];
+    let contractID = await getContractIDBySellerID(parseInt(currItem.sellerID));
+    const exists = !!(await getContractValuesByID(contractID))?.content[0]
+      .values.buyerEthereumAddress;
 
     let finalResponse = {
       id: itemID,
@@ -127,6 +143,9 @@ const getItemByID = async (req, res) => {
       itemPrice: currItem.itemPrice,
       itemImgHash: currItem.itemImgHash,
       itemLocation: currItem.itemLocation,
+      hasBuyer: exists,
+      hasContract:
+        (await getContractByTypeID("item", itemID)) !== null ? true : false,
     };
     res.status(200).json({ currItem: finalResponse });
   } catch (error) {
@@ -145,14 +164,51 @@ const getAllItems = async (req, res) => {
     } else {
       const itemsArray2D = Array.from(itemsState).reverse();
       const itemsArray = itemsArray2D.map((item) => item[1]);
+      let allItemsArray = [];
+      let buyerItems = [];
+      for (const item of itemsArray) {
+        let verifiedItem = await checkValidation(item.id, "item");
+        let contractID = await getContractIDBySellerID(
+          parseInt(item.content[0].sellerID)
+        );
+        const exists = !!(await getContractValuesByID(contractID))?.content[0]
+          .values.buyerEthereumAddress;
+        let verifiedSeller = await checkValidation(
+          item.content[0].sellerID,
+          "seller"
+        );
+        item.content[0].hasBuyer = exists;
+        item.content[0].hasContract =
+          (await checkMetadata(`item${item.id}`).keyvalues) !== null
+            ? true
+            : false;
+        allItemsArray.push(item);
+        if (verifiedItem && verifiedSeller) {
+          buyerItems.push(item);
+        }
+      }
 
-      res.status(200).json({ items: itemsArray });
+      res.status(200).json({ items: allItemsArray, buyerItems: buyerItems });
     }
-  } catch {
+  } catch (error) {
     console.log(error);
     res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
+const checkItemHasContract = async (req, res) => {
+  const { itemID } = req.params;
+  try {
+    const existingContract = await getContractByTypeID("item", itemID);
+    if (existingContract === null) {
+      res.status(200).json({ hasContract: false });
+    } else {
+      res.status(200).json({ hasContract: true });
+    }
+  } catch (error) {
+    res.status(500).json({ errorMsg: "Error fetching data", error: error });
+  }
+};
+
 const getAllItemsOracle = async (req, res) => {
   try {
     const itemsState = await getAllFilesFromIPFS("item");
@@ -192,6 +248,17 @@ const checkItemVerification = async (req, res) => {
   }
 };
 
+const checkValidation = async (itemID, type) => {
+  try {
+    const item = await checkMetadata(`${type}${itemID}`);
+    if (item.keyvalues === null) {
+      return false;
+    } else {
+      return true;
+    }
+  } catch (error) {}
+};
+
 module.exports = {
   postItem,
   upload,
@@ -200,4 +267,5 @@ module.exports = {
   checkItemVerification,
   getAllItemsOracle,
   getItemByID,
+  checkItemHasContract,
 };

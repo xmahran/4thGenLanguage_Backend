@@ -135,6 +135,20 @@ const getAllPhotosFromIPFS = async (name) => {
     return pinnedFiles;
   } catch (error) {}
 };
+const checkMetadata = async (name) => {
+  try {
+    const response = await axios.get(
+      `https://api.pinata.cloud/data/pinList?status=pinned&metadata[name]=${name}`,
+      {
+        headers: {
+          Authorization: `Bearer ${JWT}`,
+        },
+      }
+    );
+    const pinnedFiles = response.data.rows;
+    return pinnedFiles[0].metadata;
+  } catch (error) {}
+};
 
 const getFileByHash = async (hash) => {
   try {
@@ -240,6 +254,7 @@ module.exports = {
   getAllPhotosFromIPFS,
   checkFileVerification,
   getHashArray,
+  checkMetadata,
   getFileByHash,
   deleteFileFromIPFS,
 };

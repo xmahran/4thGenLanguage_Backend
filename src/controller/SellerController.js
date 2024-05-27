@@ -13,9 +13,10 @@ const {
   getFileByHash,
   getHashArray,
   getAllPhotosFromIPFS,
+  checkMetadata,
 } = require("./IPFSController");
 const { encryptData, compareData } = require("../helpers/Encryption");
-const { query, emailQuery } = require("../model/Query");
+const { query, emailQuery, usernameQuery } = require("../model/Query");
 
 const registerSeller = async (req, res) => {
   let userID;
@@ -71,7 +72,7 @@ const login = async (req, res) => {
             { userID: validEmail[0].id, userNode: validEmail[0].content[0] },
             config.privateKey,
             {
-              expiresIn: "1h",
+              expiresIn: "4h",
             }
           );
           res.status(200).json({
@@ -133,14 +134,35 @@ const getAllSellers = async (req, res) => {
     res.status(500).json({ errorMsg: "Error fetching data", error: error });
   }
 };
-
+const getUserIDByUsername = async (username) => {
+  try {
+    let buyersState = await getAllFilesFromIPFS("buyer");
+    let sellersState = await getAllFilesFromIPFS("seller");
+    const sellerFound = query(sellersState, usernameQuery(username));
+    const buyerFound = query(buyersState, usernameQuery(username));
+    if (sellerFound.length > 0) {
+      return { type: "seller", id: sellerFound[0].id };
+    } else {
+      return { type: "buyer", id: buyerFound[0].id };
+    }
+  } catch (error) {}
+};
 const getAllIdentites = async (req, res) => {
   try {
     const data = await getHashArray("identity");
+    let finalizedIdentities = [];
     if (data === 0) {
       res.status(200).json([]);
     } else {
-      res.status(200).json({ identities: data });
+      for (const identity of data) {
+        let username = identity.metadata.name.split("identity")[0];
+        const { type, id } = await getUserIDByUsername(username);
+        const verified = await checkMetadata(`${type}${id}`);
+        if (verified.keyvalues === null) {
+          finalizedIdentities.push(identity);
+        }
+      }
+      res.status(200).json({ identities: finalizedIdentities });
     }
   } catch (error) {
     console.log(error);
@@ -150,8 +172,12 @@ const getAllIdentites = async (req, res) => {
 const uploadIdentityPhotos = async (req, res) => {
   const photo = req.file.buffer;
   const username = req.body.username;
+  const type = req.body.type;
   try {
-    const hash = await uploadPhotosToIPFS(photo, username, "identity");
+    let hash;
+    if (type !== "oracle")
+      hash = await uploadPhotosToIPFS(photo, username, "identity");
+    else hash = await uploadPhotosToIPFS(photo, username, "idorc");
     res.status(200).json({ ipfsHash: hash });
   } catch (error) {
     console.log(error);

@@ -13,6 +13,7 @@ const {
   getFileByHash,
   getHashArray,
   getAllPhotosFromIPFS,
+  checkMetadata,
 } = require("./IPFSController");
 const { encryptData, compareData } = require("../helpers/Encryption");
 const { query, emailQuery } = require("../model/Query");
@@ -88,6 +89,23 @@ const login = async (req, res) => {
     console.log(error);
     res.status(500).json({
       errorMsg: "Error logging as a buyer",
+      error: error,
+    });
+  }
+};
+const checkValidation = async (req, res) => {
+  const { buyerID } = req.params;
+  try {
+    const buyer = await checkMetadata(`buyer${buyerID}`);
+    if (buyer.keyvalues === null) {
+      res.status(200).json({ verified: false });
+    } else {
+      res.status(200).json({ verified: true });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      errorMsg: "Error fetching data",
       error: error,
     });
   }
@@ -187,13 +205,69 @@ const getContractBySellerID = async (req, res) => {
   }
 };
 
+const addComplain = async (req, res) => {
+  let complainID;
+  let prevHash;
+  let node;
+  let name;
+  const content = req.body;
+  const complainState = new Map();
+  try {
+    const numOfComplains = await checkFilesLength("complain");
+
+    complainID = numOfComplains + 1; // Increment to get the next available user and to start with 1....
+    name = `complain${complainID}`;
+    if (numOfComplains === 0) {
+      node = new Node(1, "complain", name, null, content);
+    } else {
+      prevHash = await getHash(`complain${numOfComplains}`);
+      if (prevHash == []) {
+        res
+          .status(500)
+          .json({ errorMsg: "Unexpected error while getting previous hashes" });
+      }
+      node = new Node(complainID, "complain", name, prevHash, content);
+    }
+    let complainNode = addNode(complainState, node);
+    const json = serializeDatabase(complainNode);
+    const hash = await postToIPFS(json, "data.json", name);
+    res.status(200).json({ ipfsHash: hash });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      errorMsg: "Error while adding a complaint",
+      error: error,
+    });
+  }
+};
+const getAllComplains = async (req, res) => {
+  try {
+    const complainsState = await getAllFilesFromIPFS("complain");
+    if (complainsState === 0) {
+      res.status(200).json([]);
+    } else {
+      const complainsArray2D = Array.from(complainsState).reverse();
+      const complainsArray = complainsArray2D.map((item) => item[1]);
+      res.status(200).json({ complains: complainsArray });
+    }
+  } catch (error) {
+    res.status(500).json({
+      errorMsg: "Error while fetching data",
+      error: error,
+    });
+  }
+};
+
 module.exports = {
   registerBuyer,
+  getAllComplains,
   getAllBuyers,
   upload,
+  checkValidation,
   login,
   uploadIdentityPhotos,
   getBuyerByID,
   getAllIdentites,
+  addComplain,
   checkIdentityVerification,
 };

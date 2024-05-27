@@ -21,7 +21,7 @@ const deploy = async (contractABI, bytecode, username, steps, values) => {
     identityProofImgHash: values.sellerImageHash,
     identityProofOracle: values.sellerAddressOracle,
     identityProofOracleHash: values.sellerHashOracle,
-    verified: true,
+    verified: false,
   };
 
   const item = {
@@ -29,7 +29,7 @@ const deploy = async (contractABI, bytecode, username, steps, values) => {
     itemProofImgHash: values.itemHash,
     imgOracle: values.itemAddressOracle,
     imgOracleHash: values.itemHashOracle,
-    verified: true,
+    verified: false,
   };
 
   const contractName = `${username}Contract`;

@@ -6,7 +6,7 @@
       struct Step {
           string party; //buyer/ seller
           string stepProcess;
-          string status; //COMPLETED / INPROGRESS
+          string status; //VERIFIED / INPROGRESS
       }
   
       struct Buyer {
@@ -51,17 +51,19 @@
       string public transferDate;  
   
       event StepCompleted (
-          Step step
+          string stepProccess,
+          string party
       );
        event ItemVerified (
-          Item item
+          string itemProofImg,
+          address verifier
       );
       event SellerIDVerified (
-          Seller seller
+          address ethAddress,
+          string identityProofImg,
+          address verifier
       );
-      event BuyerIDVerified (
-          Seller seller
-      );
+  
       event StepAdded(string stepProcess, string party);
   
       constructor(
@@ -113,26 +115,24 @@
           emit StepAdded(stepProcess, party);
       }
       function stepCompleted(uint stepNumber) external  {
-          contractSteps[stepNumber].status = "COMPLETED";
-          emit StepCompleted(contractSteps[stepNumber]);
+          contractSteps[stepNumber].status = "VERIFIED";
+          emit StepCompleted(contractSteps[stepNumber].stepProcess, contractSteps[stepNumber].party);
       }
       function verifyItem(address oracleAddress, string memory oracleVerificationHash) external  {
           item.verified = true;
           item.imgOracle = oracleAddress;
           item.imgOracleHash = oracleVerificationHash;
-          emit ItemVerified(item);
+          emit ItemVerified(item.itemProofImg, oracleAddress);
       }
       function verifySellerIdentity(address oracleAddress, string memory oracleVerificationHash) external {
           seller.identityProofOracle = oracleAddress;
           seller.identityProofOracleHash = oracleVerificationHash;
           seller.verified = true;
-          emit SellerIDVerified(seller);
+          emit SellerIDVerified(seller.ethAddress, seller.identityProofImg, oracleAddress);
       }
-      function verifyBuyerIdentity(address oracleAddress, string memory oracleVerificationHash) external {
-          buyer.identityProofOracle = oracleAddress;
-          buyer.identityProofOracleHash = oracleVerificationHash;
-          buyer.verified = true;
-          emit BuyerIDVerified(seller);(seller);
+ 
+      function getContractSteps() public view returns (Step[] memory) {
+        return contractSteps;
       }
   
        modifier onlyNotCompleted() {

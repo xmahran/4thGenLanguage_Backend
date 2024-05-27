@@ -17,7 +17,7 @@ router.get("/item/:itemID", getItemByID);
 
 router.get("/items", getAllItems);
 router.get("/itemsfororacle", getAllItemsOracle);
-
+router.get("/checkcontract/:itemID", checkItemVerification);
 router.get("/items", checkItemVerification);
 router.get("/checkitemverification", checkItemVerification);
 
